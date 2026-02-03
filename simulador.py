@@ -2,6 +2,8 @@ import paho.mqtt.client as mqtt
 import time
 import random
 import threading
+import json
+from datetime import datetime
 
 # --- CONFIGURACIÓN GRUPO 2 ---
 BROKER = "mqtt.eict.ce.pucmm.edu.do"
@@ -9,7 +11,6 @@ PORT = 1883
 USER = "itt363-grupo2"
 PASS = "knDH2P6N4w9g"
 
-# Compatibilidad Paho v2 (Para evitar el Warning)
 try:
     from paho.mqtt.enums import CallbackAPIVersion
     VERSION_API = CallbackAPIVersion.VERSION2
@@ -33,10 +34,10 @@ class EstacionMeteorologica(threading.Thread):
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
         if rc == 0:
-            print(f"[{self.estacion_id}]  Conectado.")
+            print(f"[{self.estacion_id}] Conectado.")
             self.connected = True
         else:
-            print(f"[{self.estacion_id}]  Error: {rc}")
+            print(f"[{self.estacion_id}] Error: {rc}")
 
     def run(self):
         self.client.on_connect = self.on_connect
@@ -46,17 +47,28 @@ class EstacionMeteorologica(threading.Thread):
 
             while True:
                 if self.connected:
+                    # 1. Generar datos
                     temp = round(random.uniform(22.0, 34.0), 2)
                     hum = round(random.uniform(60.0, 95.0), 2)
                     viento = round(random.uniform(5.0, 30.0), 2)
 
+                    # 2. Generar Timestamp (Fecha y Hora)
+                    ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    # 3. Definir Tópico Base
                     base_topic = f"/{USER}/estacion/{self.estacion_id}/sensores"
                     
-                    self.client.publish(f"{base_topic}/temperatura", temp)
-                    self.client.publish(f"{base_topic}/humedad", hum)
-                    self.client.publish(f"{base_topic}/viento", viento)
+                    # 4. Crear Payloads en JSON (Dato + Fecha)
+                    payload_temp = json.dumps({"valor": temp, "fecha": ahora, "unidad": "C"})
+                    payload_hum = json.dumps({"valor": hum, "fecha": ahora, "unidad": "%"})
+                    payload_viento = json.dumps({"valor": viento, "fecha": ahora, "unidad": "km/h"})
 
-                    print(f" [{self.estacion_id}] Enviado T:{temp}°C | H:{hum}%")
+                    # 5. Publicar
+                    self.client.publish(f"{base_topic}/temperatura", payload_temp)
+                    self.client.publish(f"{base_topic}/humedad", payload_hum)
+                    self.client.publish(f"{base_topic}/viento", payload_viento)
+
+                    print(f"[{self.estacion_id}] Enviado a las {ahora}")
                 
                 time.sleep(5) 
 
@@ -66,6 +78,6 @@ class EstacionMeteorologica(threading.Thread):
             self.client.disconnect()
 
 if __name__ == "__main__":
-    print(f"--- INICIANDO SIMULADOR (PUBLICADOR) ---")
+    print(f"--- INICIANDO SIMULADOR CON TIMESTAMP ---")
     EstacionMeteorologica("EST-NORTE").start()
     EstacionMeteorologica("EST-SUR").start()

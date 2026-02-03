@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
-import random # Importamos random para el ID unico
+import random
+import json
 
 # --- CONFIGURACIÓN GRUPO 2 ---
 BROKER = "mqtt.eict.ce.pucmm.edu.do"
@@ -8,7 +9,6 @@ USER = "itt363-grupo2"
 PASS = "knDH2P6N4w9g"
 TOPIC_ROOT = f"/{USER}/#"
 
-# Ajuste Compatibilidad Paho v2
 try:
     from paho.mqtt.enums import CallbackAPIVersion
     VERSION_API = CallbackAPIVersion.VERSION2
@@ -17,33 +17,50 @@ except ImportError:
 
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        print(f" MONITOR CONECTADO ({USER})")
-        print(f" Escuchando en: {TOPIC_ROOT}")
+        print(f"MONITOR CONECTADO ({USER})")
+        print(f"Escuchando en: {TOPIC_ROOT}")
         client.subscribe(TOPIC_ROOT)
     else:
-        print(f" Error de conexión: {rc}")
+        print(f"Error de conexión: {rc}")
 
 def on_message(client, userdata, msg):
     try:
-        payload = msg.payload.decode("utf-8")
+        payload_str = msg.payload.decode("utf-8")
         topic = msg.topic
         
-        # Parseo: /itt363-grupo2/estacion/ID/sensores/TIPO
-        partes = topic.split("/")
+        # Intentamos parsear como JSON
+        try:
+            data = json.loads(payload_str)
+            valor = data.get("valor")
+            fecha = data.get("fecha")
+            unidad = data.get("unidad", "")
+            es_json = True
+        except json.JSONDecodeError:
+            # Si no es JSON (por si acaso), lo tratamos como texto plano
+            valor = payload_str
+            fecha = "Sin fecha"
+            unidad = ""
+            es_json = False
         
+        # Parseo del Tópico
+        partes = topic.split("/")
         if len(partes) >= 6:
             estacion = partes[3]
             sensor = partes[5]
-            # Usamos ljust para que quede alineado bonito en columnas
-            print(f" [{estacion}] {sensor.upper().ljust(12)}: {payload}")
+            
+            # Formato de salida profesional
+            # [ESTACION] SENSOR | VALOR | FECHA
+            texto_sensor = sensor.upper().ljust(12)
+            texto_valor = f"{valor}{unidad}".ljust(10)
+            
+            print(f"[{estacion}] {texto_sensor} | {texto_valor} | {fecha}")
         else:
-            print(f" {topic}: {payload}")
+            print(f"{topic}: {payload_str}")
             
     except Exception as e:
         print(f"Error procesando mensaje: {e}")
 
-# --- GENERAR ID ÚNICO ---
-# Esto evita el conflicto si se te quedó otro proceso abierto
+# Generar ID aleatorio
 aleatorio = random.randint(1000, 9999)
 client_id_monitor = f"Monitor_{USER}_{aleatorio}"
 
@@ -57,7 +74,7 @@ client.on_connect = on_connect
 client.on_message = on_message
 
 try:
-    print(f"Conectando al broker como {client_id_monitor}...")
+    print(f"Conectando al broker...")
     client.connect(BROKER, PORT, 60)
     client.loop_forever()
 except KeyboardInterrupt:
