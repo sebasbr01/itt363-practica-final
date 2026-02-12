@@ -39,6 +39,7 @@ Grupo: itt363-grupo2_pasalucha
 ## Requisitos Previos
 
 
+    Conexión a la VPN de la PUCMM: Es indispensable estar conectado a la red de la universidad (vía VPN o conexión local) para poder alcanzar el broker mqtt.eict.ce.pucmm.edu.do. Sin esta conexión, el script no podrá conectarse.
     Python 3.x
 
     MySQL Community Server (puede que se necesario crear la base de datos X con anterioridad)
