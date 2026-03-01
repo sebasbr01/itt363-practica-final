@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Datos de Estaciones Meteorológicas</title>
+</head>
+<body>
+    <h1>Lecturas en Tiempo Real</h1>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Estación</th>
+                <th>Sensor</th>
+                <th>Valor</th>
+                <th>Unidad</th>
+                <th>Fecha y Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in lecturas %}
+            <tr>
+                <td>{{ fila[0] }}</td>
+                <td>{{ fila[1] | upper }}</td>
+                <td>{{ fila[2] }}</td>
+                <td>{{ fila[3] }}</td>
+                <td>{{ fila[4] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -5,7 +5,7 @@ import threading
 import json
 from datetime import datetime
 
-# --- CONFIGURACIÓN GRUPO 2 ---
+# --- CONFIGURACIÓN MQTT ---
 BROKER = "mqtt.eict.ce.pucmm.edu.do"
 PORT = 1883
 USER = "itt363-grupo2"
@@ -34,7 +34,7 @@ class EstacionMeteorologica(threading.Thread):
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
         if rc == 0:
-            print(f"[{self.estacion_id}] Conectado.")
+            print(f"[{self.estacion_id}] Conectado al Broker MQTT.")
             self.connected = True
         else:
             print(f"[{self.estacion_id}] Error: {rc}")
@@ -47,23 +47,20 @@ class EstacionMeteorologica(threading.Thread):
 
             while True:
                 if self.connected:
-                    # 1. Generar datos
+                    # Generar datos simulados
                     temp = round(random.uniform(22.0, 34.0), 2)
                     hum = round(random.uniform(60.0, 95.0), 2)
                     viento = round(random.uniform(5.0, 30.0), 2)
-
-                    # 2. Generar Timestamp (Fecha y Hora)
                     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    # 3. Definir Tópico Base
                     base_topic = f"/{USER}/estacion/{self.estacion_id}/sensores"
                     
-                    # 4. Crear Payloads en JSON (Dato + Fecha)
+                    # Crear Payloads en JSON
                     payload_temp = json.dumps({"valor": temp, "fecha": ahora, "unidad": "C"})
                     payload_hum = json.dumps({"valor": hum, "fecha": ahora, "unidad": "%"})
                     payload_viento = json.dumps({"valor": viento, "fecha": ahora, "unidad": "km/h"})
 
-                    # 5. Publicar
+                    # Publicar
                     self.client.publish(f"{base_topic}/temperatura", payload_temp)
                     self.client.publish(f"{base_topic}/humedad", payload_hum)
                     self.client.publish(f"{base_topic}/viento", payload_viento)
