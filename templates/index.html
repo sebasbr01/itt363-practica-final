@@ -159,19 +159,17 @@
         };
 
         // Arrancar inmediatamente sin esperar recursos externos
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("Estructura lista. Solicitando datos al instante...");
-            cargarPagina(); // Llena la tabla inmediatamente
-            
-            // Iniciamos MQTT un instante después para no bloquear la pantalla
-            setTimeout(() => {
-                try {
-                    mqttClient.connect(options);
-                } catch(e) {
-                    console.error("Error iniciando MQTT web:", e);
-                }
-            }, 500);
-        });
+        // 1. Llamamos a los datos inmediatamente sin esperar eventos
+        cargarPagina();
+
+        // 2. Iniciamos MQTT medio segundo después para no asfixiar la red
+        setTimeout(() => {
+            try {
+                mqttClient.connect(options);
+            } catch(e) {
+                console.error("Error iniciando MQTT web:", e);
+            }
+        }, 500);
     </script>
 </body>
 </html>
