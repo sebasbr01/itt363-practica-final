@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard IoT - Grupo 2</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; display: flex; flex-direction: column; align-items: center;}
         .header { display: flex; justify-content: space-between; width: 80%; align-items: center; margin-bottom: 10px; }
@@ -13,13 +12,12 @@
         th, td { padding: 12px; border: 1px solid #ddd; }
         th { background-color: #e9ecef; }
         .pagination { display: flex; justify-content: space-between; width: 80%; margin-top: 20px; align-items: center; }
-        .nueva-fila { background-color: #d4edda; transition: background-color 2s ease; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>Datos Recibidos (En Vivo)</h2>
+        <h2>Datos Recibidos</h2>
         <button onclick="cargarPagina()">Actualizar</button>
     </div>
 
@@ -49,7 +47,7 @@
         let firstId = null;
         let lastId = null;
 
-        // 1. LÓGICA DE BASE DE DATOS Y PAGINACIÓN KEYSET (Evitando Caché)
+        // LÓGICA DE BASE DE DATOS Y PAGINACIÓN KEYSET
         function renderTable(datos) {
             const tbody = document.getElementById('tabla-body');
             tbody.innerHTML = '';
@@ -69,19 +67,22 @@
                         </tr>
                     `;
                 });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay datos en la base de datos aún.</td></tr>';
             }
             document.getElementById('page-info').innerText = `Página ${currentPage} de ${totalPages}`;
         }
 
         function cargarPagina() {
-            // El '?t=' + getTime() fuerza al navegador a buscar datos frescos
+            // Buscamos los datos directamente a la API de Flask que consulta la BD
             fetch('/api/lecturas?t=' + new Date().getTime())
                 .then(res => res.json())
                 .then(data => {
                     totalPages = data.total_pages;
                     currentPage = 1;
                     renderTable(data.datos);
-                });
+                })
+                .catch(error => console.error("Error conectando con la base de datos:", error));
         }
 
         function siguiente() {
@@ -106,70 +107,8 @@
             }
         }
 
-        // 2. LÓGICA DE MQTT EN EL NAVEGADOR
-        const clientId = "web_" + Math.random().toString(16).substr(2, 8);
-        
-        // Conexión WebSockets para MQTT (Puerto 8083 por defecto)
-        const mqttClient = new Paho.MQTT.Client("mqtt.eict.ce.pucmm.edu.do", 8083, clientId);
-
-        mqttClient.onMessageArrived = function(message) {
-            // Solo insertamos en tiempo real si el usuario está en la página 1
-            if(currentPage === 1) {
-                try {
-                    const data = JSON.parse(message.payloadString);
-                    const topicParts = message.destinationName.split("/");
-                    const estacion = topicParts[3];
-                    const sensor = topicParts[5].toUpperCase();
-                    
-                    const tbody = document.getElementById('tabla-body');
-                    const newRow = `
-                        <tr class="nueva-fila">
-                            <td>-</td> <td>${data.fecha}</td>
-                            <td>${sensor}</td>
-                            <td>${data.valor} ${data.unidad}</td>
-                            <td>Estación ${estacion}</td>
-                        </tr>`;
-                    
-                    // Agregar fila arriba de todo
-                    tbody.insertAdjacentHTML('afterbegin', newRow);
-                    
-                    // Si hay más de 10 filas, borramos la última
-                    if(tbody.children.length > 10) {
-                        tbody.lastElementChild.remove();
-                        lastId = tbody.lastElementChild.id ? tbody.lastElementChild.id.replace('row-', '') : lastId;
-                    }
-
-                    // Quitar el color verde después de 2 segundos
-                    setTimeout(() => { tbody.firstElementChild.classList.remove('nueva-fila'); }, 2000);
-                } catch(e) { console.error("Error parseando MQTT", e); }
-            }
-        };
-
-        const options = {
-            userName: "itt363-grupo2",
-            password: "knDH2P6N4w9g",
-            useSSL: false, // Cambiar a true si tu profesor activó HTTPS/WSS en el broker
-            onSuccess: function() {
-                console.log("¡Conectado a MQTT desde el navegador!");
-                mqttClient.subscribe("/itt363-grupo2/#");
-            },
-            onFailure: function(e) {
-                console.log("Fallo la conexión MQTT: ", e);
-            }
-        };
-
-        // Arrancar inmediatamente sin esperar recursos externos
-        // 1. Llamamos a los datos inmediatamente sin esperar eventos
+        // ARRANQUE SEGURO: Carga los datos de la BD inmediatamente al abrir la página
         cargarPagina();
-
-        // 2. Iniciamos MQTT medio segundo después para no asfixiar la red
-        setTimeout(() => {
-            try {
-                mqttClient.connect(options);
-            } catch(e) {
-                console.error("Error iniciando MQTT web:", e);
-            }
-        }, 500);
     </script>
 </body>
 </html>
