@@ -49,7 +49,7 @@
         let firstId = null;
         let lastId = null;
 
-        // 1. LÓGICA DE BASE DE DATOS Y PAGINACIÓN KEYSET
+        // 1. LÓGICA DE BASE DE DATOS Y PAGINACIÓN KEYSET (Evitando Caché)
         function renderTable(datos) {
             const tbody = document.getElementById('tabla-body');
             tbody.innerHTML = '';
@@ -74,7 +74,8 @@
         }
 
         function cargarPagina() {
-            fetch('/api/lecturas')
+            // El '?t=' + getTime() fuerza al navegador a buscar datos frescos
+            fetch('/api/lecturas?t=' + new Date().getTime())
                 .then(res => res.json())
                 .then(data => {
                     totalPages = data.total_pages;
@@ -85,7 +86,7 @@
 
         function siguiente() {
             if(currentPage < totalPages && lastId) {
-                fetch(`/api/lecturas?last_id=${lastId}`)
+                fetch(`/api/lecturas?last_id=${lastId}&t=` + new Date().getTime())
                     .then(res => res.json())
                     .then(data => {
                         currentPage++;
@@ -96,7 +97,7 @@
 
         function anterior() {
             if(currentPage > 1 && firstId) {
-                fetch(`/api/lecturas?first_id=${firstId}`)
+                fetch(`/api/lecturas?first_id=${firstId}&t=` + new Date().getTime())
                     .then(res => res.json())
                     .then(data => {
                         currentPage--;
@@ -108,8 +109,7 @@
         // 2. LÓGICA DE MQTT EN EL NAVEGADOR
         const clientId = "web_" + Math.random().toString(16).substr(2, 8);
         
-        // ATENCIÓN: Los navegadores no pueden usar el puerto 1883 directo.
-        // Necesitan conectarse por WebSockets. El puerto estándar en Mosquitto suele ser 8083 o 443.
+        // Conexión WebSockets para MQTT (Puerto 8083 por defecto)
         const mqttClient = new Paho.MQTT.Client("mqtt.eict.ce.pucmm.edu.do", 8083, clientId);
 
         mqttClient.onMessageArrived = function(message) {
@@ -133,7 +133,7 @@
                     // Agregar fila arriba de todo
                     tbody.insertAdjacentHTML('afterbegin', newRow);
                     
-                    // Si hay más de 10 filas, borramos la última para mantener la eficiencia
+                    // Si hay más de 10 filas, borramos la última
                     if(tbody.children.length > 10) {
                         tbody.lastElementChild.remove();
                         lastId = tbody.lastElementChild.id ? tbody.lastElementChild.id.replace('row-', '') : lastId;
@@ -148,7 +148,7 @@
         const options = {
             userName: "itt363-grupo2",
             password: "knDH2P6N4w9g",
-            useSSL: false, // Cambiar a true si el profesor configuró HTTPS/WSS en el broker
+            useSSL: false, // Cambiar a true si tu profesor activó HTTPS/WSS en el broker
             onSuccess: function() {
                 console.log("¡Conectado a MQTT desde el navegador!");
                 mqttClient.subscribe("/itt363-grupo2/#");
